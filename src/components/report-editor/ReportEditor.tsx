@@ -8,11 +8,16 @@ import { ResizablePanel } from "./ResizablePanel";
 import { PreviewModal } from "./PreviewModal";
 import { ElementType, ReportElement } from "./types";
 import { Button } from "@/components/ui/button";
-import { Eye, Download } from "lucide-react";
+import { Eye, Download, ArrowLeft } from "lucide-react";
 import { generatePDF } from "./elements/utils/pdfGenerator";
 import { toast } from "sonner";
+import Link from "next/link";
 
-export const ReportEditor = () => {
+interface ReportEditorProps {
+  reportId?: string;
+}
+
+export const ReportEditor = ({ reportId }: ReportEditorProps) => {
   const [elements, setElements] = useState<ReportElement[]>([]);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -136,7 +141,21 @@ export const ReportEditor = () => {
     <div className="h-screen flex flex-col bg-white">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b bg-white shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-900">PDF Report Editor</h1>
+        <div className="flex items-center gap-4">
+          <Link href="/">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft size={16} />
+              Back
+            </Button>
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {reportId ? `Editing Report ${reportId}` : "New Report"}
+          </h1>
+        </div>
         <div className="flex gap-2">
           <Button
             variant="outline"
