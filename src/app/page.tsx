@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -11,50 +11,45 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus, FileText, Calendar, Clock } from "lucide-react";
 import Link from "next/link";
-
-interface Report {
-  id: string;
-  name: string;
-  description?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-// Mock data - in a real app, this would come from an API or database
-const mockReports: Report[] = [
-  {
-    id: "1",
-    name: "Q4 Sales Report",
-    description: "Quarterly sales analysis and projections",
-    createdAt: new Date("2024-01-15"),
-    updatedAt: new Date("2024-01-20"),
-  },
-  {
-    id: "2",
-    name: "Marketing Campaign Results",
-    description: "Analysis of recent marketing initiatives",
-    createdAt: new Date("2024-01-10"),
-    updatedAt: new Date("2024-01-18"),
-  },
-  {
-    id: "3",
-    name: "Customer Feedback Summary",
-    description: "Compilation of customer surveys and feedback",
-    createdAt: new Date("2024-01-05"),
-    updatedAt: new Date("2024-01-12"),
-  },
-];
+import { reportService, ReportMetadata } from "@/lib/reportService";
 
 export default function Home() {
-  const [reports] = useState<Report[]>(mockReports);
+  const [reports, setReports] = useState<ReportMetadata[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadReports();
+  }, []);
+
+  const loadReports = async () => {
+    try {
+      const reportsData = await reportService.getAllReports();
+      setReports(reportsData);
+    } catch (error) {
+      console.error("Error loading reports:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
+    return new Date(date).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading reports...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -103,9 +98,14 @@ export default function Home() {
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
                     {
-                      reports.filter(
-                        (r) => r.createdAt.getMonth() === new Date().getMonth()
-                      ).length
+                      reports.filter((r) => {
+                        const reportDate = new Date(r.createdAt);
+                        const now = new Date();
+                        return (
+                          reportDate.getMonth() === now.getMonth() &&
+                          reportDate.getFullYear() === now.getFullYear()
+                        );
+                      }).length
                     }
                   </p>
                 </div>
@@ -125,7 +125,7 @@ export default function Home() {
                       reports.filter((r) => {
                         const weekAgo = new Date();
                         weekAgo.setDate(weekAgo.getDate() - 7);
-                        return r.updatedAt > weekAgo;
+                        return new Date(r.updatedAt) > weekAgo;
                       }).length
                     }
                   </p>
@@ -166,7 +166,7 @@ export default function Home() {
                   key={report.id}
                   className="hover:shadow-lg transition-shadow cursor-pointer"
                 >
-                  <Link href={`/editor/${report.id}`}>
+                  <Link href={`/editor/${report.slug}`}>
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -178,6 +178,9 @@ export default function Home() {
                               {report.description}
                             </CardDescription>
                           )}
+                          <p className="text-xs text-gray-400 mt-2 font-mono">
+                            /{report.slug}
+                          </p>
                         </div>
                         <FileText className="h-5 w-5 text-gray-400" />
                       </div>
@@ -204,11 +207,17 @@ export default function Home() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Link href="/editor">
                 <Button variant="outline" className="w-full justify-start">
                   <Plus className="h-4 w-4 mr-2" />
                   Create New Report
+                </Button>
+              </Link>
+              <Link href="/schedule">
+                <Button variant="outline" className="w-full justify-start">
+                  <Clock className="h-4 w-4 mr-2" />
+                  Schedule Reports
                 </Button>
               </Link>
               <Button variant="outline" className="w-full justify-start">

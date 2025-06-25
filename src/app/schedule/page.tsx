@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -29,17 +29,13 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
-
-interface Report {
-  id: string;
-  name: string;
-  description?: string;
-}
+import { reportService, ReportMetadata } from "@/lib/reportService";
 
 interface Schedule {
   id: string;
   reportId: string;
   reportName: string;
+  reportSlug: string;
   frequency: "daily" | "weekly" | "monthly" | "custom";
   time: string;
   days?: string[];
@@ -48,26 +44,13 @@ interface Schedule {
   nextRun?: Date;
 }
 
-// Mock data
-const mockReports: Report[] = [
-  { id: "1", name: "Q4 Sales Report", description: "Quarterly sales analysis" },
-  {
-    id: "2",
-    name: "Marketing Campaign Results",
-    description: "Marketing performance metrics",
-  },
-  {
-    id: "3",
-    name: "Customer Feedback Summary",
-    description: "Customer satisfaction data",
-  },
-];
-
+// Mock schedules data
 const mockSchedules: Schedule[] = [
   {
     id: "1",
     reportId: "1",
     reportName: "Q4 Sales Report",
+    reportSlug: "q4-sales-report",
     frequency: "weekly",
     time: "09:00",
     days: ["monday"],
@@ -78,6 +61,7 @@ const mockSchedules: Schedule[] = [
     id: "2",
     reportId: "2",
     reportName: "Marketing Campaign Results",
+    reportSlug: "marketing-campaign-results",
     frequency: "monthly",
     time: "14:00",
     isActive: false,
@@ -87,6 +71,7 @@ const mockSchedules: Schedule[] = [
 
 export default function SchedulePage() {
   const [schedules, setSchedules] = useState<Schedule[]>(mockSchedules);
+  const [reports, setReports] = useState<ReportMetadata[]>([]);
   const [selectedReport, setSelectedReport] = useState<string>("");
   const [frequency, setFrequency] = useState<
     "daily" | "weekly" | "monthly" | "custom"
@@ -94,6 +79,22 @@ export default function SchedulePage() {
   const [time, setTime] = useState("09:00");
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [customCron, setCustomCron] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadReports();
+  }, []);
+
+  const loadReports = async () => {
+    try {
+      const reportsData = await reportService.getAllReports();
+      setReports(reportsData);
+    } catch (error) {
+      console.error("Error loading reports:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const daysOfWeek = [
     { value: "monday", label: "Monday" },
@@ -114,13 +115,14 @@ export default function SchedulePage() {
   const handleCreateSchedule = () => {
     if (!selectedReport) return;
 
-    const report = mockReports.find((r) => r.id === selectedReport);
+    const report = reports.find((r) => r.id === selectedReport);
     if (!report) return;
 
     const newSchedule: Schedule = {
       id: Date.now().toString(),
       reportId: selectedReport,
       reportName: report.name,
+      reportSlug: report.slug,
       frequency,
       time,
       days: frequency === "weekly" ? selectedDays : undefined,
@@ -185,6 +187,17 @@ export default function SchedulePage() {
     return date.toLocaleString();
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading reports...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
@@ -236,7 +249,7 @@ export default function SchedulePage() {
                       <SelectValue placeholder="Choose a report" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockReports.map((report) => (
+                      {reports.map((report) => (
                         <SelectItem key={report.id} value={report.id}>
                           {report.name}
                         </SelectItem>
@@ -387,6 +400,9 @@ export default function SchedulePage() {
                             </div>
                             <p className="text-sm text-gray-500 mt-1">
                               Next run: {formatNextRun(schedule.nextRun)}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1 font-mono">
+                              /{schedule.reportSlug}
                             </p>
                           </div>
                         </div>

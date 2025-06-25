@@ -4,7 +4,7 @@ import { ReportEditor } from "@/components/report-editor/ReportEditor";
 
 interface EditorPageProps {
   params: {
-    id: string;
+    id: string; // This is actually the slug
   };
 }
 
